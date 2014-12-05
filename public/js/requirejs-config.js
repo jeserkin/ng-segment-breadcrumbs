@@ -12,6 +12,9 @@ var requirejsConfig = {
     'ng-breadcrumbs': [
       'dist/ng-breadcrumbs.min',
       '//ianwalter.github.io/ng-breadcrumbs/dist/ng-breadcrumbs.min'
+    ],
+    'angular-route-segment': [
+      '//cdnjs.cloudflare.com/ajax/libs/angular-route-segment/1.3.3/angular-route-segment.min'
     ]
   },
   shim: {
@@ -22,6 +25,9 @@ var requirejsConfig = {
       deps: ['angular']
     },
     'ng-breadcrumbs': {
+      deps: ['angular']
+    },
+    'angular-route-segment': {
       deps: ['angular']
     }
   }

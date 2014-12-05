@@ -1,8 +1,9 @@
 /**
- * ng-breadcrumb.js - v0.4.1 - A better AngularJS service to help with
+ * ng-breadcrumb.js - v0.4.2 - A better AngularJS service to help with
  * breadcrumb-style navigation between views.
  *
  * @author Ian Kennington Walter (http://ianvonwalter.com)
+ * @editor Eugene Serkin (http://art-coder.com)
  */
 (function(angular) {
   'use strict';
@@ -13,7 +14,8 @@
       '$rootScope',
       '$location',
       '$route',
-      function ($rootScope, $location, $route) {
+      '$routeSegment',
+      function ($rootScope, $location, $route, $routeSegment) {
         var BreadcrumbService = {
           breadcrumbs: [],
           get: function(options) {
@@ -36,53 +38,61 @@
           },
           generateBreadcrumbs: function() {
             var routes = $route.routes,
-                _this = this,
-                params,
-                pathElements,
-                pathObj = {},
-                path = '',
-                originalPath = '',
-                param;
+              _this = this,
+              params,
+              param,
+              path = '',
+              originalPath = '',
+              fullSegmentName = '';
 
-            if ($route && $route.current && $route.current.originalPath) {
+            if ($routeSegment) {
               this.breadcrumbs = [];
-              params = $route.current.params;
-              pathElements = $route.current.originalPath.trim().split('/');
+              params = $routeSegment.$routeParams;
 
-              // Necessary to get rid of of duplicate empty string on root path
-              if (pathElements[1] === '') {
-                pathElements.splice(1, 1);
-              }
+              angular.forEach($routeSegment.chain, function(segment, index) {
+                if (segment === null) {
+                  // @TODO: Need to handle
+                  return;
+                }
 
-              angular.forEach(pathElements, function(pathElement, index) {
-                param = pathElement[0] === ':' &&
-                        typeof params[pathElement
-                          .slice(1, pathElement.length)] !== 'undefined' ?
-                        params[pathElement.slice(1, pathElement.length)] :
-                        false;
+                if (fullSegmentName.trim() !== '') {
+                  fullSegmentName += '.' + segment.name;
+                }
+                else {
+                  fullSegmentName = segment.name;
+                }
 
-                pathObj[index] = {
-                  path: param || pathElement,
-                  originalPath: pathElement
-                };
+                try {
+                  path = $routeSegment.getSegmentUrl(fullSegmentName);
+                }
+                catch (e) {
+                  return;
+                }
+                originalPath = $routeSegment.getRawSegmentUrl(fullSegmentName);
 
-                path = Object
-                  .keys(pathObj)
-                  .map(function(k) { return pathObj[k].path;  })
-                  .join('/') || '/';
+                var originalPathSegments = '';
+                if (originalPath.trim().length > 1) {
+                  originalPathSegments = originalPath.trim().slice(1).split('/');
+                }
+                else {
+                  originalPathSegments = originalPath.trim().split('/');
+                }
 
-                originalPath = Object
-                  .keys(pathObj)
-                  .map(function(k) { return pathObj[k].originalPath;  })
-                  .join('/') || '/';
+                angular.forEach(originalPathSegments, function(originalSegment, index) {
+                  param = originalSegment[0] === ':' &&
+                  typeof params[originalSegment
+                    .slice(1, originalSegment.length)] !== 'undefined' ?
+                    params[originalSegment.slice(1, originalSegment.length)] :
+                    false;
+                });
 
                 if (routes[originalPath] &&
-                    (routes[originalPath].label || param) &&
-                    !routes[originalPath].excludeBreadcrumb) {
+                  (segment.params['label'] || param) &&
+                  !routes[originalPath].excludeBreadcrumb) {
                   _this.breadcrumbs.push({
                     path: path,
                     originalPath: originalPath,
-                    label: routes[originalPath].label || param,
+                    label: segment.params['label'] || param,
                     param: param
                   });
                 }
@@ -99,13 +109,19 @@
         });
 
         $rootScope.$watch(
-          function() { return BreadcrumbService.options; },
+          function() {
+            return BreadcrumbService.options;
+          },
           function() {
             BreadcrumbService.generateBreadcrumbs();
           }
         );
 
         BreadcrumbService.generateBreadcrumbs();
+
+        $rootScope.$on('routeSegmentChange', function(index, segment) {
+          BreadcrumbService.generateBreadcrumbs();
+        });
 
         return BreadcrumbService;
       }
